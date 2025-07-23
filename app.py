@@ -549,8 +549,13 @@ elif st.session_state.step == 3:
     min_month = full_df["Month"].min().to_pydatetime()
     max_month = full_df["Month"].max().to_pydatetime()
 
+    st.markdown(
+        "<span style='font-weight:bold; font-size:16px;'>Filter:</span> Filter: Select Month Range",
+        unsafe_allow_html=True
+    )
+
     month_range = st.slider(
-        "Select Month Range:",
+        # "Filter: Select Month Range",
         min_value=min_month,
         max_value=max_month,
         value=(min_month, max_month),
