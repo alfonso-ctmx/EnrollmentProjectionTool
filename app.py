@@ -439,92 +439,24 @@ elif st.session_state.step == 3:
         enrollment_goal
     )
 
-    # --- table_df: static table (never affected by slider) ---
-    table_df = full_df.copy().reset_index(drop=True)
-    table_df["Month"] = table_df["Month"].dt.strftime("%b %Y")
-    table_df["Total Patients Enrolled"] = (
-        np.floor(table_df["Total Patients Enrolled (decimal)"])
-          .astype(int)
-    )
-    table_df = table_df[
-        [
-            "Month",
-            "Actual / Projection",
-            "Sites Activated",
-            "Total Sites Activated",
-            "Patients Enrolled",
-            "Patients to be Enrolled",
-            "Total Patients Enrolled",
-            "PSM",
-        ]
-    ]
+    # --- PRE-DONUT METRICS (uses full, unfiltered data) ---
+    static_df = full_df.copy().reset_index(drop=True)
+    # Month display for header
+    total_months      = len(static_df)
+    fsa_month         = st.session_state.step1_inputs['fsa_date'].strftime('%b %Y')
+    lpi_month         = static_df["Month"].max().strftime('%b %Y')
+    # Site activation counts
+    actual_sites      = static_df.loc[static_df["Actual / Projection"]=="Actual",   "Sites Activated"].sum()
+    projected_sites   = static_df.loc[static_df["Actual / Projection"]=="Projection","Sites Activated"].sum()
+    total_sites       = actual_sites + projected_sites
+    percent_activated = (actual_sites/total_sites*100) if total_sites>0 else 0
+    # Enrollment counts
+    patients_enrolled = static_df.loc[static_df["Actual / Projection"]=="Actual", "Patients Enrolled"] \
+                               .apply(pd.to_numeric, errors="coerce").fillna(0).sum()
+    enrollment_goal   = st.session_state.step1_inputs.get("total_enrollment", 1)
+    pending_enrollment= enrollment_goal - patients_enrolled
+    percent_enrolled  = (patients_enrolled/enrollment_goal*100) if enrollment_goal>0 else 0
 
-    # Render the static table BEFORE the slider
-    st.subheader("Enrollment Forecast (Full Data)")
-    AgGrid(
-        table_df,
-        enable_enterprise_modules=False,
-        fit_columns_on_grid_load=True,
-        update_mode=GridUpdateMode.NO_UPDATE,
-        allow_unsafe_jscode=True,
-    )
-
-
-    # --- Month slider (now filters the *pre-computed* dataframe) ---
-    min_month = full_df["Month"].min().to_pydatetime()
-    max_month = full_df["Month"].max().to_pydatetime()
-
-    month_range = st.slider(
-        "Select Month Range:",
-        min_value=min_month,
-        max_value=max_month,
-        value=(min_month, max_month),
-        format="MMM YYYY"
-    )
-
-    # df = full_df.loc[
-    #     (full_df["Month"] >= pd.to_datetime(month_range[0])) &
-    #     (full_df["Month"] <= pd.to_datetime(month_range[1]))
-    # ].copy()
-
-    # df = df.reset_index(drop=True)      # ensures labels 0…N-1
-
-    # --- Month slider (filtered only for plots) ---
-    filtered_df = full_df.loc[
-        (full_df["Month"] >= pd.to_datetime(month_range[0])) &
-        (full_df["Month"] <= pd.to_datetime(month_range[1]))
-    ].reset_index(drop=True)
-
-    # prepare Month & Total Enrolled for plotting
-    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
-    filtered_df["Total Patients Enrolled"] = (
-        np.floor(filtered_df["Total Patients Enrolled (decimal)"])
-          .astype(int)
-    )
-
-
-    # Format Month for display
-    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
-
-    # Round down cumulative decimal to create integer display version
-    filtered_df["Total Patients Enrolled"] = np.floor(
-        filtered_df["Total Patients Enrolled (decimal)"]
-    ).astype(int)
-
-    # Define display columns in the requested order
-    display_df = filtered_df[
-        [
-            "Month",
-            "Actual / Projection",
-            "Sites Activated",
-            "Total Sites Activated",
-            "Patients Enrolled",
-            "Patients to be Enrolled",
-            "Total Patients Enrolled",  
-            # "Total Patients Enrolled (decimal)", 
-            "PSM"
-        ]
-    ]
 
     # Define JS formatters
     psm_formatter = JsCode("""
@@ -552,7 +484,7 @@ elif st.session_state.step == 3:
     """)
 
     # Build Grid Options
-    gb = GridOptionsBuilder.from_dataframe(display_df)
+    gb = GridOptionsBuilder.from_dataframe(static_df)
     gb.configure_column("Patients Enrolled", valueFormatter=patients_enrolled_formatter)
     gb.configure_column("Patients to be Enrolled", valueFormatter=patients_to_be_enrolled_formatter)
     gb.configure_column("PSM", valueFormatter=psm_formatter)
@@ -560,24 +492,10 @@ elif st.session_state.step == 3:
     # gb.configure_grid_options(domLayout='autoHeight')
 
 
-    # ------------- DASHBOARD METRICS (FIXED) ------------- #
-    if not display_df.empty:
-        total_months = len(display_df)
-        fsa_month = st.session_state.step1_inputs['fsa_date'].strftime('%b %Y')
-        lpi_month = display_df["Month"].max()
-        actual_sites = display_df[display_df["Actual / Projection"] == "Actual"]["Sites Activated"].sum()
-        projected_sites = display_df[display_df["Actual / Projection"] == "Projection"]["Sites Activated"].sum()
-        total_sites = actual_sites + projected_sites
-        percent_activated = (actual_sites / total_sites) * 100 if total_sites > 0 else 0
-        patients_enrolled = display_df[display_df["Actual / Projection"] == "Actual"]["Patients Enrolled"].apply(pd.to_numeric, errors="coerce").fillna(0).sum()
-        enrollment_goal = st.session_state.step1_inputs.get("total_enrollment", 1)
-        pending_enrollment = enrollment_goal - patients_enrolled
-        percent_enrolled = (patients_enrolled / enrollment_goal)*100 if enrollment_goal else 0
-
-        st.markdown(
-            f"<p style='font-size:20px; text-align:left; margin:0;'><strong>Projected Enrollment Period:</strong> {fsa_month} to {lpi_month} ({total_months} months)</p>",
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        f"<p style='font-size:20px; text-align:left; margin:0;'><strong>Projected Enrollment Period:</strong> {fsa_month} to {lpi_month} ({total_months} months)</p>",
+        unsafe_allow_html=True
+    )
 
     # ---------- DONUT CHARTS FOR STEP 3 DASHBOARD ---------- #
     total_sites = actual_sites + projected_sites
@@ -625,6 +543,57 @@ elif st.session_state.step == 3:
         st.plotly_chart(fig_sites, use_container_width=True)
     with col_chart2:
         st.plotly_chart(fig_enroll, use_container_width=True)
+
+    # --- Month slider (now filters the *pre-computed* dataframe) ---
+    min_month = full_df["Month"].min().to_pydatetime()
+    max_month = full_df["Month"].max().to_pydatetime()
+
+    month_range = st.slider(
+        "Select Month Range:",
+        min_value=min_month,
+        max_value=max_month,
+        value=(min_month, max_month),
+        format="MMM YYYY"
+    )
+
+    # --- Month slider (filtered only for plots) ---
+    filtered_df = full_df.loc[
+        (full_df["Month"] >= pd.to_datetime(month_range[0])) &
+        (full_df["Month"] <= pd.to_datetime(month_range[1]))
+    ].reset_index(drop=True)
+
+    # prepare Month & Total Enrolled for plotting
+    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+    filtered_df["Total Patients Enrolled"] = (
+        np.floor(filtered_df["Total Patients Enrolled (decimal)"])
+          .astype(int)
+    )
+
+
+    # Format Month for display
+    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+
+    # Round down cumulative decimal to create integer display version
+    filtered_df["Total Patients Enrolled"] = np.floor(
+        filtered_df["Total Patients Enrolled (decimal)"]
+    ).astype(int)
+
+    # Define display columns in the requested order
+    display_df = filtered_df[
+        [
+            "Month",
+            "Actual / Projection",
+            "Sites Activated",
+            "Total Sites Activated",
+            "Patients Enrolled",
+            "Patients to be Enrolled",
+            "Total Patients Enrolled",  
+            # "Total Patients Enrolled (decimal)", 
+            "PSM"
+        ]
+    ]
+
+
 
     # Filter data
     # actual_df = display_df[display_df["Actual / Projection"] == "Actual"]
@@ -726,6 +695,35 @@ elif st.session_state.step == 3:
 
     st.plotly_chart(fig_psm, use_container_width=True)
 
+    # --- table_df: static table (never affected by slider) ---
+    table_df = full_df.copy().reset_index(drop=True)
+    table_df["Month"] = table_df["Month"].dt.strftime("%b %Y")
+    table_df["Total Patients Enrolled"] = (
+        np.floor(table_df["Total Patients Enrolled (decimal)"])
+          .astype(int)
+    )
+    table_df = table_df[
+        [
+            "Month",
+            "Actual / Projection",
+            "Sites Activated",
+            "Total Sites Activated",
+            "Patients Enrolled",
+            "Patients to be Enrolled",
+            "Total Patients Enrolled",
+            "PSM",
+        ]
+    ]
+
+    # Render the static table BEFORE the slider
+    st.subheader("Enrollment Forecast (Full Data)")
+    AgGrid(
+        table_df,
+        enable_enterprise_modules=False,
+        fit_columns_on_grid_load=True,
+        update_mode=GridUpdateMode.NO_UPDATE,
+        allow_unsafe_jscode=True,
+    )
 
     # Render grid
     # AgGrid(
