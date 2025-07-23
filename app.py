@@ -439,24 +439,36 @@ elif st.session_state.step == 3:
         enrollment_goal
     )
 
+    # --- table_df: static table (never affected by slider) ---
+    table_df = full_df.copy().reset_index(drop=True)
+    table_df["Month"] = table_df["Month"].dt.strftime("%b %Y")
+    table_df["Total Patients Enrolled"] = (
+        np.floor(table_df["Total Patients Enrolled (decimal)"])
+          .astype(int)
+    )
+    table_df = table_df[
+        [
+            "Month",
+            "Actual / Projection",
+            "Sites Activated",
+            "Total Sites Activated",
+            "Patients Enrolled",
+            "Patients to be Enrolled",
+            "Total Patients Enrolled",
+            "PSM",
+        ]
+    ]
 
-    # # --- Month slider filter ---
-    # min_month = df["Month"].min().to_pydatetime()
-    # max_month = df["Month"].max().to_pydatetime()
+    # Render the static table BEFORE the slider
+    st.subheader("Enrollment Forecast (Full Data)")
+    AgGrid(
+        table_df,
+        enable_enterprise_modules=False,
+        fit_columns_on_grid_load=True,
+        update_mode=GridUpdateMode.NO_UPDATE,
+        allow_unsafe_jscode=True,
+    )
 
-    # month_range = st.slider(
-    #     "Select Month Range:",
-    #     min_value=min_month,
-    #     max_value=max_month,
-    #     value=(min_month, max_month),
-    #     format="MMM YYYY"
-    # )
-
-    # # Filter df based on slider
-    # df = df[
-    #     (df["Month"] >= pd.to_datetime(month_range[0])) & 
-    #     (df["Month"] <= pd.to_datetime(month_range[1]))
-    # ]
 
     # --- Month slider (now filters the *pre-computed* dataframe) ---
     min_month = full_df["Month"].min().to_pydatetime()
@@ -470,23 +482,37 @@ elif st.session_state.step == 3:
         format="MMM YYYY"
     )
 
-    df = full_df.loc[
+    # df = full_df.loc[
+    #     (full_df["Month"] >= pd.to_datetime(month_range[0])) &
+    #     (full_df["Month"] <= pd.to_datetime(month_range[1]))
+    # ].copy()
+
+    # df = df.reset_index(drop=True)      # ensures labels 0…N-1
+
+    # --- Month slider (filtered only for plots) ---
+    filtered_df = full_df.loc[
         (full_df["Month"] >= pd.to_datetime(month_range[0])) &
         (full_df["Month"] <= pd.to_datetime(month_range[1]))
-    ].copy()
+    ].reset_index(drop=True)
 
-    df = df.reset_index(drop=True)      # ensures labels 0…N-1
+    # prepare Month & Total Enrolled for plotting
+    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+    filtered_df["Total Patients Enrolled"] = (
+        np.floor(filtered_df["Total Patients Enrolled (decimal)"])
+          .astype(int)
+    )
+
 
     # Format Month for display
-    df["Month"] = df["Month"].dt.strftime("%b %Y")
+    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
 
     # Round down cumulative decimal to create integer display version
-    df["Total Patients Enrolled"] = np.floor(
-        df["Total Patients Enrolled (decimal)"]
+    filtered_df["Total Patients Enrolled"] = np.floor(
+        filtered_df["Total Patients Enrolled (decimal)"]
     ).astype(int)
 
     # Define display columns in the requested order
-    display_df = df[
+    display_df = filtered_df[
         [
             "Month",
             "Actual / Projection",
@@ -601,8 +627,10 @@ elif st.session_state.step == 3:
         st.plotly_chart(fig_enroll, use_container_width=True)
 
     # Filter data
-    actual_df = display_df[display_df["Actual / Projection"] == "Actual"]
-    projected_df = display_df[display_df["Actual / Projection"] == "Projection"]
+    # actual_df = display_df[display_df["Actual / Projection"] == "Actual"]
+    # projected_df = display_df[display_df["Actual / Projection"] == "Projection"]
+    actual_df    = filtered_df[filtered_df["Actual / Projection"] == "Actual"]
+    projected_df = filtered_df[filtered_df["Actual / Projection"] == "Projection"]
 
     # Create traces
     fig = go.Figure()
@@ -758,4 +786,3 @@ elif st.session_state.step == 3:
         if st.button("⬅️ Back: to Step 2"):
             st.session_state.step = 2
             st.rerun()
-
