@@ -555,7 +555,7 @@ elif st.session_state.step == 3:
     )
 
     month_range = st.slider(
-        # "Filter: Select Month Range",
+        label="",
         min_value=min_month,
         max_value=max_month,
         value=(min_month, max_month),
