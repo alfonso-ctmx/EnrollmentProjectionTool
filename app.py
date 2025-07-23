@@ -485,6 +485,7 @@ elif st.session_state.step == 3:
 
     # Build Grid Options
     gb = GridOptionsBuilder.from_dataframe(static_df)
+    gb.configure_default_column(sortable=False)
     gb.configure_column("Patients Enrolled", valueFormatter=patients_enrolled_formatter)
     gb.configure_column("Patients to be Enrolled", valueFormatter=patients_to_be_enrolled_formatter)
     gb.configure_column("PSM", valueFormatter=psm_formatter)
@@ -573,23 +574,6 @@ elif st.session_state.step == 3:
     filtered_df["Total Patients Enrolled"] = np.floor(
         filtered_df["Total Patients Enrolled (decimal)"]
     ).astype(int)
-
-    # # Define display columns in the requested order
-    # display_df = filtered_df[
-    #     [
-    #         "Month",
-    #         "Actual / Projection",
-    #         "Sites Activated",
-    #         "Total Sites Activated",
-    #         "Patients Enrolled",
-    #         "Patients to be Enrolled",
-    #         "Total Patients Enrolled",  
-    #         # "Total Patients Enrolled (decimal)", 
-    #         "PSM"
-    #     ]
-    # ]
-
-
 
     # Filter data
     actual_df    = filtered_df[filtered_df["Actual / Projection"] == "Actual"]
