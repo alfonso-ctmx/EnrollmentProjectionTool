@@ -549,7 +549,7 @@ elif st.session_state.step == 3:
     min_month = full_df["Month"].min().to_pydatetime()
     max_month = full_df["Month"].max().to_pydatetime()
 
-    with st.expander("Filter: Select Month Range", expanded=False):
+    with st.expander("Filter: Select Month Range to filter the following charts below", expanded=False):
         month_range = st.slider(
             label="",            # keep label empty if you used a prior markdown
             min_value=min_month,
