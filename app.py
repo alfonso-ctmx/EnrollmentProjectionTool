@@ -688,6 +688,35 @@ elif st.session_state.step == 3:
 
     if show_table:
         st.caption(" (right click on the table to export)")
+
+
+        # --- Download buttons ---
+        csv = display_df.to_csv(index=False).encode("utf-8")
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
+            display_df.to_excel(writer, sheet_name="Data", index=False)
+            writer.save()
+        excel_data = excel_buffer.getvalue()
+    
+        col_csv, col_xlsx = st.columns(2)
+        with col_csv:
+            st.download_button(
+                label="⬇️ Download as CSV",
+                data=csv,
+                file_name="enrollment_forecast.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+    
+        with col_xlsx:
+            st.download_button(
+                label="⬇️ Download as Excel",
+                data=excel_data,
+                file_name="enrollment_forecast.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        
         AgGrid(
             display_df,
             gridOptions=gb.build(),
