@@ -696,7 +696,7 @@ elif st.session_state.step == 3:
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
             display_df.to_excel(writer, sheet_name="Data", index=False)
-            writer.save()
+            # writer.save()
         excel_data = excel_buffer.getvalue()
     
         col_csv, col_xlsx = st.columns(2)
