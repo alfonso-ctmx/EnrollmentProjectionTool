@@ -549,49 +549,14 @@ elif st.session_state.step == 3:
     min_month = full_df["Month"].min().to_pydatetime()
     max_month = full_df["Month"].max().to_pydatetime()
 
-    st.markdown(
-        """
-        <style>
-        /* style for the label line */
-        .filter-container {
-            border: 1px solid #ccc;
-            border-radius: 8px 8px 0 0;       /* rounded top corners only */
-            padding: 0.5rem 1rem;
-            background-color: #f9f9f9;
-            margin-bottom: 0;
-        }
-        .filter-container p {
-            margin: 0;
-        }
-
-        /* style for the slider widget itself */
-        div[data-testid="stSlider"] {
-            border: 1px solid #ccc;
-            border-top: none;                  /* connect to the label box above */
-            border-radius: 0 0 8px 8px;        /* rounded bottom corners only */
-            padding: 0.5rem 1rem 1rem 1rem;
-            background-color: #f9f9f9;
-            margin-top: 0;                     /* tighten the gap */
-            margin-bottom: 1rem;               /* space before the next chart */
-        }
-        </style>
-
-        <!-- this is only your label bar;
-            the slider itself is styled via the CSS above -->
-        <div class="filter-container">
-        <p><strong>Filter:</strong> Select Month Range</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    month_range = st.slider(
-        label="",  # no label; it’s already rendered above
-        min_value=min_month,
-        max_value=max_month,
-        value=(min_month, max_month),
-        format="MMM YYYY"
-    )
+    with st.expander("Filter: Select Month Range", expanded=False):
+        month_range = st.slider(
+            label="",            # keep label empty if you used a prior markdown
+            min_value=min_month,
+            max_value=max_month,
+            value=(min_month, max_month),
+            format="MMM YYYY"
+        )
 
     # --- Month slider (filtered only for plots) ---
     filtered_df = full_df.loc[
