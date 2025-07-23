@@ -352,6 +352,7 @@ elif st.session_state.step == 2:
 
 # ---------------- STEP 3 ----------------
 elif st.session_state.step == 3:
+
     # st.markdown("### 📈 Enrollment Forecast Summary")
     st.title("Enrollment Forecast Summary")
 
@@ -607,8 +608,10 @@ elif st.session_state.step == 3:
         y=display_df["Total Patients Enrolled"],
         name="Enrollment – Projected",
         mode="lines+markers",
-        line=dict(color="#24C354", dash="dot")
-        # line=dict(color="#00CC96", dash="dot")
+        # line=dict(color="#24C354", dash="dot"),
+        # line=dict(color="#00CC96", dash="dot"),
+        line=dict(color="#24C354", dash="dot", width=3.5),
+        marker=dict(size=9)
     ))
 
     # Enrollment – Actual (Line)
@@ -617,7 +620,9 @@ elif st.session_state.step == 3:
         y=actual_df["Total Patients Enrolled"],
         name="Enrollment – Actual",
         mode="lines+markers",
-        line=dict(color="#00CC96")
+        # line=dict(color="#00CC96"),
+        line=dict(color="#00CC96", width=3.5),
+        marker=dict(size=9)
     ))
 
     # Layout
@@ -670,15 +675,31 @@ elif st.session_state.step == 3:
 
 
     # Render grid
-    AgGrid(
-        display_df,
-        gridOptions=gb.build(),
-        allow_unsafe_jscode=True,
-        update_mode=GridUpdateMode.NO_UPDATE,
-        height=450,
-        use_container_width=True,
-        fit_columns_on_grid_load=True, 
-    )
+    # AgGrid(
+    #     display_df,
+    #     gridOptions=gb.build(),
+    #     allow_unsafe_jscode=True,
+    #     update_mode=GridUpdateMode.NO_UPDATE,
+    #     height=450,
+    #     use_container_width=True,
+    #     fit_columns_on_grid_load=True, 
+    # )
+
+
+    show_table = st.toggle("📄 Show Enrollment Forecast Data Table", value=False)
+
+    if show_table:
+        # st.markdown("### 📄 Enrollment Forecast Data Table")
+        AgGrid(
+            display_df,
+            gridOptions=gb.build(),
+            allow_unsafe_jscode=True,
+            update_mode=GridUpdateMode.NO_UPDATE,
+            height=450,
+            use_container_width=True,
+            fit_columns_on_grid_load=True,
+        )
+
 
     # Navigation buttons
     col1, col2 = st.columns(2)
