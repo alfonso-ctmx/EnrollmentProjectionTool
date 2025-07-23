@@ -562,42 +562,36 @@ elif st.session_state.step == 3:
         (full_df["Month"] <= pd.to_datetime(month_range[1]))
     ].reset_index(drop=True)
 
-    # prepare Month & Total Enrolled for plotting
-    # filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
-    filtered_df["Month_str"] = filtered_df["Month"].dt.strftime("%b %Y")   # NEW
-    filtered_df["Total Patients Enrolled"] = np.floor(
-        filtered_df["Total Patients Enrolled (decimal)"]
-    ).astype(int)
-
-
-    # Format Month for display
-    # filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+    # prepare Month_str & Total Enrolled for plotting
+    filtered_df["Month_str"] = filtered_df["Month"].dt.strftime("%b %Y")
+    filtered_df["Total Patients Enrolled"] = (
+        np.floor(filtered_df["Total Patients Enrolled (decimal)"])
+        .astype(int)
+    )
 
     # Round down cumulative decimal to create integer display version
     filtered_df["Total Patients Enrolled"] = np.floor(
         filtered_df["Total Patients Enrolled (decimal)"]
     ).astype(int)
 
-    # Define display columns in the requested order
-    display_df = filtered_df[
-        [
-            "Month",
-            "Actual / Projection",
-            "Sites Activated",
-            "Total Sites Activated",
-            "Patients Enrolled",
-            "Patients to be Enrolled",
-            "Total Patients Enrolled",  
-            # "Total Patients Enrolled (decimal)", 
-            "PSM"
-        ]
-    ]
+    # # Define display columns in the requested order
+    # display_df = filtered_df[
+    #     [
+    #         "Month",
+    #         "Actual / Projection",
+    #         "Sites Activated",
+    #         "Total Sites Activated",
+    #         "Patients Enrolled",
+    #         "Patients to be Enrolled",
+    #         "Total Patients Enrolled",  
+    #         # "Total Patients Enrolled (decimal)", 
+    #         "PSM"
+    #     ]
+    # ]
 
 
 
     # Filter data
-    # actual_df = display_df[display_df["Actual / Projection"] == "Actual"]
-    # projected_df = display_df[display_df["Actual / Projection"] == "Projection"]
     actual_df    = filtered_df[filtered_df["Actual / Projection"] == "Actual"]
     projected_df = filtered_df[filtered_df["Actual / Projection"] == "Projection"]
 
@@ -626,8 +620,8 @@ elif st.session_state.step == 3:
 
     # Enrollment – Projected (Dotted Line)
     fig.add_trace(go.Scatter(
-        x=display_df["Month_str"],
-        y=display_df["Total Patients Enrolled"],
+        x=filtered_df["Month_str"],
+        y=filtered_df["Total Patients Enrolled"],
         name="Enrollment – Projected",
         mode="lines+markers",
         # line=dict(color="#24C354", dash="dot"),
@@ -675,8 +669,8 @@ elif st.session_state.step == 3:
     fig_psm = go.Figure()
 
     fig_psm.add_trace(go.Scatter(
-        x=display_df["Month_str"],
-        y=display_df["PSM"],
+        x=filtered_df["Month_str"],
+        y=filtered_df["PSM"],
         mode="lines+markers",
         name="PSM",
         line_shape="hv",  # step-wise chart
@@ -710,41 +704,30 @@ elif st.session_state.step == 3:
             "Total Sites Activated",
             "Patients Enrolled",
             "Patients to be Enrolled",
-            "Total Patients Enrolled",
-            "PSM",
+            "Total Patients Enrolled",  
+            # "Total Patients Enrolled (decimal)", 
+            "PSM"
         ]
     ]
 
     # Render the static table BEFORE the slider
     st.subheader("Enrollment Forecast (Full Data)")
-    AgGrid(
-        table_df,
-        enable_enterprise_modules=False,
-        fit_columns_on_grid_load=True,
-        update_mode=GridUpdateMode.NO_UPDATE,
-        allow_unsafe_jscode=True,
-    )
-
-    # Render grid
     # AgGrid(
-    #     display_df,
-    #     gridOptions=gb.build(),
-    #     allow_unsafe_jscode=True,
+    #     table_df,
+    #     enable_enterprise_modules=False,
+    #     fit_columns_on_grid_load=True,
     #     update_mode=GridUpdateMode.NO_UPDATE,
-    #     height=450,
-    #     use_container_width=True,
-    #     fit_columns_on_grid_load=True, 
+    #     allow_unsafe_jscode=True,
     # )
-
 
     show_table = st.toggle("📄 Show Enrollment Forecast Data Table", value=False)
 
     if show_table:
         # --- Download buttons ---
-        csv = display_df.to_csv(index=False).encode("utf-8")
+        csv = table_df.to_csv(index=False).encode("utf-8")
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
-            display_df.to_excel(writer, sheet_name="Data", index=False)
+            table_df.to_excel(writer, sheet_name="Data", index=False)
             # writer.save()
         excel_data = excel_buffer.getvalue()
 
@@ -768,13 +751,14 @@ elif st.session_state.step == 3:
             )
 
         AgGrid(
-            display_df,
+            table_df,
             gridOptions=gb.build(),
             allow_unsafe_jscode=True,
             update_mode=GridUpdateMode.NO_UPDATE,
             height=450,
             use_container_width=True,
             fit_columns_on_grid_load=True,
+            # enable_enterprise_modules=False,
         )
 
 
