@@ -549,38 +549,49 @@ elif st.session_state.step == 3:
     min_month = full_df["Month"].min().to_pydatetime()
     max_month = full_df["Month"].max().to_pydatetime()
 
-    # ——— Styled filter box ———
     st.markdown(
         """
         <style>
+        /* style for the label line */
         .filter-container {
-            border: 1px solid #ccc;        /* light gray border */
-            border-radius: 8px;            /* rounded corners */
-            padding: 0.5rem 1rem;          /* inner spacing */
-            background-color: #f9f9f9;     /* very light gray bg */
-            margin-bottom: 1rem;           /* space below box */
+            border: 1px solid #ccc;
+            border-radius: 8px 8px 0 0;       /* rounded top corners only */
+            padding: 0.5rem 1rem;
+            background-color: #f9f9f9;
+            margin-bottom: 0;
         }
         .filter-container p {
-            margin: 0;                     /* tighten markdown line */
+            margin: 0;
+        }
+
+        /* style for the slider widget itself */
+        div[data-testid="stSlider"] {
+            border: 1px solid #ccc;
+            border-top: none;                  /* connect to the label box above */
+            border-radius: 0 0 8px 8px;        /* rounded bottom corners only */
+            padding: 0.5rem 1rem 1rem 1rem;
+            background-color: #f9f9f9;
+            margin-top: 0;                     /* tighten the gap */
+            margin-bottom: 1rem;               /* space before the next chart */
         }
         </style>
+
+        <!-- this is only your label bar;
+            the slider itself is styled via the CSS above -->
         <div class="filter-container">
-        <p><span style="font-weight:bold; font-size:16px;">Filter:</span> Select Month Range</p>
+        <p><strong>Filter:</strong> Select Month Range</p>
+        </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # render the slider inside that same div
     month_range = st.slider(
-        label="",
+        label="",  # no label; it’s already rendered above
         min_value=min_month,
         max_value=max_month,
         value=(min_month, max_month),
         format="MMM YYYY"
     )
-
-    # close the div
-    st.markdown("</div>", unsafe_allow_html=True)
 
     # --- Month slider (filtered only for plots) ---
     filtered_df = full_df.loc[
