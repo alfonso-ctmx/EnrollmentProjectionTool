@@ -686,10 +686,10 @@ elif st.session_state.step == 3:
     # )
 
 
-    show_table = st.toggle("📄 Show Enrollment Forecast Data Table (right click on table to export)", value=False)
+    show_table = st.toggle("📄 Show Enrollment Forecast Data Table", value=False)
 
     if show_table:
-        # st.markdown("### 📄 Enrollment Forecast Data Table")
+        st.caption(" (right click on the table to export)")
         AgGrid(
             display_df,
             gridOptions=gb.build(),
