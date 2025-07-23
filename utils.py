@@ -4,6 +4,26 @@ from datetime import datetime, timedelta
 import os
 import streamlit as st
 
+import time
+import streamlit as st     # already imported above
+
+TOKEN_TTL_SEC = 24 * 60 * 60      # 24 h  ➟ change if you want a shorter TTL
+
+def store_token_in_session(token: str, ttl_sec: int = TOKEN_TTL_SEC) -> None:
+    """Save the OTP and its expiry just for the current browser session."""
+    st.session_state["otp"] = str(token)
+    st.session_state["otp_exp"] = time.time() + ttl_sec
+
+
+def is_token_valid_session(user_input: str) -> bool:
+    """True if the entered code matches the session copy and is still fresh."""
+    return (
+        "otp" in st.session_state
+        and "otp_exp" in st.session_state
+        and time.time() < st.session_state["otp_exp"]
+        and str(user_input).strip() == str(st.session_state["otp"])
+    )
+
 def get_graph_access_token():
     secrets = st.secrets["email_graph"]
     url = f"https://login.microsoftonline.com/{secrets['tenant_id']}/oauth2/v2.0/token"
