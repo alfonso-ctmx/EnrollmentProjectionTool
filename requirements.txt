@@ -1,6 +1,6 @@
-numpy==1.24.2
-pandas==1.5.3
-plotly==5.9.0
+numpy==1.26
+pandas==2.2
+plotly==5.20
 requests==2.32.4
 streamlit-aggrid==1.0.5
 streamlit==1.46.1
