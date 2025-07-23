@@ -549,47 +549,38 @@ elif st.session_state.step == 3:
     min_month = full_df["Month"].min().to_pydatetime()
     max_month = full_df["Month"].max().to_pydatetime()
 
-    # st.caption("**Filter:** Select Month Range")
-    # month_range = st.slider(
-    #     label="", 
-    #     min_value=min_month,
-    #     max_value=max_month,
-    #     value=(min_month, max_month),
-    #     format="MMM YYYY"
-    # )
-
+    # ——— Styled filter box ———
     st.markdown(
         """
         <style>
-        .tight-filter p {
-            margin: 0 0 0.2rem 0;  /* top right bottom left */
+        .filter-container {
+            border: 1px solid #ccc;        /* light gray border */
+            border-radius: 8px;            /* rounded corners */
+            padding: 0.5rem 1rem;          /* inner spacing */
+            background-color: #f9f9f9;     /* very light gray bg */
+            margin-bottom: 1rem;           /* space below box */
+        }
+        .filter-container p {
+            margin: 0;                     /* tighten markdown line */
         }
         </style>
-        <div class="tight-filter">
-        <span style="font-weight:bold; font-size:16px;">Filter:</span> Select Month Range
-        </div>
+        <div class="filter-container">
+        <p><span style="font-weight:bold; font-size:16px;">Filter:</span> Select Month Range</p>
         """,
         unsafe_allow_html=True,
     )
+
+    # render the slider inside that same div
     month_range = st.slider(
         label="",
         min_value=min_month,
         max_value=max_month,
         value=(min_month, max_month),
-        format="MMM YYYY",
+        format="MMM YYYY"
     )
 
-
-    # with st.container():
-    #     st.markdown("**Filter:** Select Month Range")
-    #     month_range = st.slider(
-    #         "", 
-    #         min_value=min_month, 
-    #         max_value=max_month, 
-    #         value=(min_month, max_month), 
-    #         format="MMM YYYY"
-    #     )
-
+    # close the div
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # --- Month slider (filtered only for plots) ---
     filtered_df = full_df.loc[
