@@ -2,14 +2,10 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
-# import json
 import random
-# from datetime import datetime, timedelta, date
-from utils import send_verification_email, is_token_valid, save_token_to_log
-# import matplotlib.pyplot as plt
+from utils import send_verification_email, is_token_valid, save_token_to_log, store_token_in_session, is_token_valid_session
 import plotly.graph_objects as go
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
-# from dateutil.relativedelta import relativedelta
 
 
 def safe_divide(numerator, denominator):
@@ -115,7 +111,8 @@ if st.session_state.step == 0:
                 token = str(random.randint(100000, 999999))
                 success = send_verification_email(name, email, token)
             if success:
-                save_token_to_log(email, token)
+                # save_token_to_log(email, token). ## <-- for local testing
+                store_token_in_session(token)  ## <-- for streamlit.app deployment
                 st.session_state.token = token
                 st.session_state.user_email = email
                 st.session_state.user_name = name
@@ -132,7 +129,8 @@ if st.session_state.step == 0:
             token_input = st.text_input("Enter Access Token")
             verify_submitted = st.form_submit_button("Verify Token")
         if verify_submitted:
-            if is_token_valid(st.session_state.user_email, token_input, ACCESS_LOG, SESSION_DURATION_HOURS):
+            # if is_token_valid(st.session_state.user_email, token_input, ACCESS_LOG, SESSION_DURATION_HOURS):   ## <-- for local testing
+            if is_token_valid_session(token_input):  ## <-- for streamlit.app deployment
                 st.session_state.verified = True
                 st.session_state.step = 1
                 st.rerun()
