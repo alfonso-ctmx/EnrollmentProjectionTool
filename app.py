@@ -64,6 +64,75 @@ def update_cumulative_columns(df):
     df["Total Patients Enrolled (decimal)"] = df["Patients Enrolled"].cumsum()
     return df
 
+# ----------  CACHED ENROLLMENT FORECAST  ----------
+# ----------  STEP-3 DATA BUILD (runs once per unique inputs)  ----------
+@st.cache_data(show_spinner="⏳ Computing enrollment forecast …")
+def build_step3_df(step2_df: pd.DataFrame,
+                   global_psm: float,
+                   enrollment_goal: int,
+                   max_months: int = 240) -> pd.DataFrame:
+    """
+    Heavy, read-only calculation of all derived columns for Step 3.
+    Streamlit reruns this only if the argument values change.
+    """
+    df = step2_df.copy().sort_values("Month").reset_index(drop=True)
+    
+    # 🆕  Ensure Month is Timestamp, not string
+    df["Month"] = pd.to_datetime(df["Month"])
+    df["Month"] = df["Month"].dt.floor("D")          # keep day=1 for safety
+
+
+    # ------- ORIGINAL HEAVY BLOCK MOVED HERE -------
+    df["Sites Activated"]   = pd.to_numeric(df["Sites Activated"]).fillna(0)
+    df["Patients Enrolled"] = pd.to_numeric(df["Patients Enrolled"]).fillna(0)
+    df["Total Sites Activated"] = df["Sites Activated"].cumsum()
+
+    df["Patients to be Enrolled"] = 0.0
+    for i in range(len(df)):
+        if df.at[i, "Actual / Projection"] == "Projection":
+            prev_sites = df.at[i-1, "Total Sites Activated"] if i > 0 else 0
+            df.at[i, "Patients to be Enrolled"] = round(global_psm * prev_sites, 3)
+
+    running_total = 0.0
+    df["Total Patients Enrolled (decimal)"] = 0.0
+    for i in range(len(df)):
+        num = (df.at[i, "Patients Enrolled"]
+               if df.at[i, "Actual / Projection"] == "Actual"
+               else df.at[i, "Patients to be Enrolled"])
+        running_total += num
+        df.at[i, "Total Patients Enrolled (decimal)"] = round(running_total, 3)
+
+    # Extend future months until goal reached (or cap)
+    months_added = 0
+    while df["Total Patients Enrolled (decimal)"].iloc[-1] < enrollment_goal and months_added < max_months:
+        next_month   = (df["Month"].iloc[-1] + pd.DateOffset(months=1)).replace(day=1)
+        prev_sites   = df["Total Sites Activated"].iloc[-1]
+        pte          = round(global_psm * prev_sites, 3)
+        running_total += pte
+        df = pd.concat([df, pd.DataFrame({
+            "Month":                     [next_month],
+            "Actual / Projection":       ["Projection"],
+            "Sites Activated":           [0],
+            "Patients Enrolled":         [np.nan],
+            "Total Sites Activated":     [prev_sites],
+            "Patients to be Enrolled":   [pte],
+            "Total Patients Enrolled (decimal)":[running_total],
+        })], ignore_index=True)
+        months_added += 1
+
+    # Compute PSM
+    df["PSM"] = None
+    for i in range(len(df)):
+        prev_sites = df.at[i-1, "Total Sites Activated"] if i > 0 else 0
+        if prev_sites:
+            num = (df.at[i, "Patients Enrolled"]
+                   if df.at[i, "Actual / Projection"] == "Actual"
+                   else df.at[i, "Patients to be Enrolled"])
+            df.at[i, "PSM"] = round(num / prev_sites, 3)
+
+    return df
+
+
 
 st.set_page_config(page_title="Enrollment Projection App", layout="wide")
 
@@ -130,8 +199,8 @@ if st.session_state.step == 0:
             token_input = st.text_input("Enter Access Token")
             verify_submitted = st.form_submit_button("Verify Token")
         if verify_submitted:
-            # if is_token_valid(st.session_state.user_email, token_input, ACCESS_LOG, SESSION_DURATION_HOURS):   ## <-- for local testing
-            if is_token_valid_session(token_input):  ## <-- for streamlit.app deployment
+            # if is_token_valid(st.session_state.user_email, token_input, ACCESS_LOG, SESSION_DURATION_HOURS):
+            if is_token_valid_session(token_input):
                 st.session_state.verified = True
                 st.session_state.step = 1
                 st.rerun()
@@ -352,7 +421,6 @@ elif st.session_state.step == 2:
 # ---------------- STEP 3 ----------------
 elif st.session_state.step == 3:
 
-    # st.markdown("### 📈 Enrollment Forecast Summary")
     st.title("Enrollment Forecast Summary")
 
     if "step2_df" not in st.session_state:
@@ -361,14 +429,38 @@ elif st.session_state.step == 3:
             st.session_state.step = 2
             st.rerun()
         st.stop()
+    
+    # --- build/cached heavy dataframe ------------------------
+    global_psm      = st.session_state.get("global_psm", 0.0)
+    enrollment_goal = st.session_state.get("total_enrollment", 0)
+    full_df = build_step3_df(
+        st.session_state["step2_df"],
+        global_psm,
+        enrollment_goal
+    )
 
-    df = st.session_state["step2_df"].copy()
-    df["Month"] = pd.to_datetime(df["Month"])
-    df = df.sort_values("Month").reset_index(drop=True)
 
-    # --- Month slider filter ---
-    min_month = df["Month"].min().to_pydatetime()
-    max_month = df["Month"].max().to_pydatetime()
+    # # --- Month slider filter ---
+    # min_month = df["Month"].min().to_pydatetime()
+    # max_month = df["Month"].max().to_pydatetime()
+
+    # month_range = st.slider(
+    #     "Select Month Range:",
+    #     min_value=min_month,
+    #     max_value=max_month,
+    #     value=(min_month, max_month),
+    #     format="MMM YYYY"
+    # )
+
+    # # Filter df based on slider
+    # df = df[
+    #     (df["Month"] >= pd.to_datetime(month_range[0])) & 
+    #     (df["Month"] <= pd.to_datetime(month_range[1]))
+    # ]
+
+    # --- Month slider (now filters the *pre-computed* dataframe) ---
+    min_month = full_df["Month"].min().to_pydatetime()
+    max_month = full_df["Month"].max().to_pydatetime()
 
     month_range = st.slider(
         "Select Month Range:",
@@ -378,78 +470,12 @@ elif st.session_state.step == 3:
         format="MMM YYYY"
     )
 
-    # Filter df based on slider
-    df = df[
-        (df["Month"] >= pd.to_datetime(month_range[0])) & 
-        (df["Month"] <= pd.to_datetime(month_range[1]))
-    ]
+    df = full_df.loc[
+        (full_df["Month"] >= pd.to_datetime(month_range[0])) &
+        (full_df["Month"] <= pd.to_datetime(month_range[1]))
+    ].copy()
 
-    global_psm = st.session_state.get("global_psm", 0.0)
-    enrollment_goal = st.session_state.get("total_enrollment", 0)
-
-    # Recalculate derived columns
-    df["Sites Activated"] = pd.to_numeric(df["Sites Activated"], errors="coerce").fillna(0)
-    df["Patients Enrolled"] = pd.to_numeric(df["Patients Enrolled"], errors="coerce").fillna(0)
-
-    df["Total Sites Activated"] = df["Sites Activated"].cumsum()
-
-    df["Patients to be Enrolled"] = 0.0
-
-
-    for i in range(len(df)):
-        if df.iloc[i]["Actual / Projection"] == "Projection":
-            prev_total_sites = df.iloc[i - 1]["Total Sites Activated"] if i > 0 else 0
-            df.at[df.index[i], "Patients to be Enrolled"] = round(global_psm * prev_total_sites, 3)
-
-
-    df["Total Patients Enrolled (decimal)"] = 0.0
-    running_total = 0.0
-    for i in range(len(df)):
-        if df.iloc[i]["Actual / Projection"] == "Actual":
-            row_index = df.index[i]
-            running_total += df.at[row_index, "Patients Enrolled"]
-
-        else:
-            row_index = df.index[i]
-            running_total += df.at[row_index, "Patients to be Enrolled"]
-        df.at[df.index[i], "Total Patients Enrolled (decimal)"] = round(running_total, 3)
-
-    # Expand future months if enrollment goal not met
-    months_added = 0
-    max_months = 240
-    while df["Total Patients Enrolled (decimal)"].iloc[-1] < enrollment_goal and months_added < max_months:
-        last_month = df["Month"].iloc[-1]
-        next_month = (last_month + pd.DateOffset(months=1)).replace(day=1)
-
-        prev_total_sites = df["Total Sites Activated"].iloc[-1]
-        pte = round(global_psm * prev_total_sites, 3)
-        running_total += pte
-
-        new_row = {
-            "Month": next_month,
-            "Actual / Projection": "Projection",
-            "Sites Activated": 0,
-            "Patients Enrolled": 0,
-            "Total Sites Activated": prev_total_sites,
-            "Patients to be Enrolled": pte,
-            "Total Patients Enrolled (decimal)": round(running_total, 3),
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        months_added += 1
-
-    if df["Total Patients Enrolled (decimal)"].iloc[-1] < enrollment_goal:
-        st.error("Unable to reach total enrollment target within 60 projection months. Please revise inputs.")
-
-    # Compute PSM
-    df["PSM"] = None
-    for i in range(len(df)):
-        prev_total_sites = df.loc[i - 1, "Total Sites Activated"] if i > 0 else 0
-        if prev_total_sites > 0:
-            if df.iloc[i]["Actual / Projection"] == "Actual":
-                numerator = df.at[df.index[i], "Patients Enrolled"]
-            else:
-                numerator = df.at[df.index[i], "Patients to be Enrolled"]
-            df.at[df.index[i], "PSM"] = round(numerator / prev_total_sites, 3)
+    df = df.reset_index(drop=True)      # ensures labels 0…N-1
 
     # Format Month for display
     df["Month"] = df["Month"].dt.strftime("%b %Y")
@@ -688,9 +714,6 @@ elif st.session_state.step == 3:
     show_table = st.toggle("📄 Show Enrollment Forecast Data Table", value=False)
 
     if show_table:
-        # st.caption(" (right click on the table to export)")
-
-
         # --- Download buttons ---
         csv = display_df.to_csv(index=False).encode("utf-8")
         excel_buffer = io.BytesIO()
@@ -698,7 +721,7 @@ elif st.session_state.step == 3:
             display_df.to_excel(writer, sheet_name="Data", index=False)
             # writer.save()
         excel_data = excel_buffer.getvalue()
-    
+
         col_csv, col_xlsx = st.columns(2)
         with col_csv:
             st.download_button(
@@ -708,7 +731,7 @@ elif st.session_state.step == 3:
                 mime="text/csv",
                 use_container_width=True
             )
-    
+
         with col_xlsx:
             st.download_button(
                 label="⬇️ Download as Excel",
@@ -717,7 +740,7 @@ elif st.session_state.step == 3:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
             )
-        
+
         AgGrid(
             display_df,
             gridOptions=gb.build(),
