@@ -688,7 +688,7 @@ elif st.session_state.step == 3:
     show_table = st.toggle("📄 Show Enrollment Forecast Data Table", value=False)
 
     if show_table:
-        st.caption(" (right click on the table to export)")
+        # st.caption(" (right click on the table to export)")
 
 
         # --- Download buttons ---
