@@ -563,15 +563,15 @@ elif st.session_state.step == 3:
     ].reset_index(drop=True)
 
     # prepare Month & Total Enrolled for plotting
-    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
-    filtered_df["Total Patients Enrolled"] = (
-        np.floor(filtered_df["Total Patients Enrolled (decimal)"])
-          .astype(int)
-    )
+    # filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+    filtered_df["Month_str"] = filtered_df["Month"].dt.strftime("%b %Y")   # NEW
+    filtered_df["Total Patients Enrolled"] = np.floor(
+        filtered_df["Total Patients Enrolled (decimal)"]
+    ).astype(int)
 
 
     # Format Month for display
-    filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
+    # filtered_df["Month"] = filtered_df["Month"].dt.strftime("%b %Y")
 
     # Round down cumulative decimal to create integer display version
     filtered_df["Total Patients Enrolled"] = np.floor(
@@ -606,7 +606,7 @@ elif st.session_state.step == 3:
 
     # Activation – Actual (Bar)
     fig.add_trace(go.Bar(
-        x=actual_df["Month"],
+        x=actual_df["Month_str"],
         y=actual_df["Total Sites Activated"],
         name="Activation – Actual",
         marker_color="steelblue"
@@ -614,7 +614,7 @@ elif st.session_state.step == 3:
 
     # Activation – Projected (Bar with pattern)
     fig.add_trace(go.Bar(
-        x=projected_df["Month"],
+        x=projected_df["Month_str"],
         y=projected_df["Total Sites Activated"],
         name="Activation – Projected",
         marker=dict(
@@ -626,7 +626,7 @@ elif st.session_state.step == 3:
 
     # Enrollment – Projected (Dotted Line)
     fig.add_trace(go.Scatter(
-        x=display_df["Month"],
+        x=display_df["Month_str"],
         y=display_df["Total Patients Enrolled"],
         name="Enrollment – Projected",
         mode="lines+markers",
@@ -638,7 +638,7 @@ elif st.session_state.step == 3:
 
     # Enrollment – Actual (Line)
     fig.add_trace(go.Scatter(
-        x=actual_df["Month"],
+        x=actual_df["Month_str"],
         y=actual_df["Total Patients Enrolled"],
         name="Enrollment – Actual",
         mode="lines+markers",
@@ -675,7 +675,7 @@ elif st.session_state.step == 3:
     fig_psm = go.Figure()
 
     fig_psm.add_trace(go.Scatter(
-        x=display_df["Month"],
+        x=display_df["Month_str"],
         y=display_df["PSM"],
         mode="lines+markers",
         name="PSM",
@@ -784,3 +784,4 @@ elif st.session_state.step == 3:
         if st.button("⬅️ Back: to Step 2"):
             st.session_state.step = 2
             st.rerun()
+
