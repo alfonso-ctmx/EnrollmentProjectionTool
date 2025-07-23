@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
+import io
 import random
 from utils import send_verification_email, is_token_valid, save_token_to_log, store_token_in_session, is_token_valid_session
 import plotly.graph_objects as go
